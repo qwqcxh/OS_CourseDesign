@@ -36,7 +36,7 @@ i386_detect_memory(void)
 
 	// Use CMOS calls to measure available base & extended memory.
 	// (CMOS calls return results in kilobytes.)
-	basemem = nvram_read(NVRAM_BASELO);
+	basemem = nvram_read(NVRAM_BASELO); 
 	extmem = nvram_read(NVRAM_EXTLO);
 	ext16mem = nvram_read(NVRAM_EXT16LO) * 64;
 
@@ -49,8 +49,8 @@ i386_detect_memory(void)
 	else
 		totalmem = basemem;
 
-	npages = totalmem / (PGSIZE / 1024);
-	npages_basemem = basemem / (PGSIZE / 1024);
+	npages = totalmem / (PGSIZE / 1024); //总物理内存页数
+	npages_basemem = basemem / (PGSIZE / 1024); //base memory 内存页数
 
 	cprintf("Physical memory: %uK available, base = %uK, extended = %uK\n",
 		totalmem, basemem, totalmem - basemem);
@@ -102,8 +102,8 @@ boot_alloc(uint32_t n)
 	// to a multiple of PGSIZE.
 	//
 	// LAB 2: Your code here.
-
-	return NULL;
+	result = ROUNDUP(nextfree+n,PGSIZE);
+	return result;
 }
 
 // Set up a two-level page table:
