@@ -255,8 +255,8 @@ page_init(void)
 	//
 	// Change the code to reflect this.
 	// NB: DO NOT actually touch the physical memory corresponding to
-	// free pages!
-	//                    +------------------------------+
+	// 
+	//   FREE_PAGES-----> +------------------------------+
 	/*                    |     ...      ...   ...       |        draw by cxh
 	*    END_OF_ALLOC---> +------------------------------+ nextfree - KERNBASE
 	*                     |     boot_alloc pages(in use) |
