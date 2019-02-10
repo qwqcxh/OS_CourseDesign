@@ -116,7 +116,8 @@ env_init(void)
 {
 	// Set up envs array
 	// LAB 3: Your code here.
-	for(size_t i=NENV-1;i>=0;i--){
+	env_free_list=NULL;
+	for(int i=NENV-1;i>=0;i--){//fix a bug
 		envs[i].env_id = 0;
 		envs[i].env_link = env_free_list;
 		env_free_list = &envs[i];
@@ -280,6 +281,7 @@ region_alloc(struct Env *e, void *va, size_t len)
 		if(newpg == NULL) panic("region_alloc: page_alloc failed!\n");
 		if(page_insert(e->env_pgdir,newpg,va,PTE_U|PTE_W) < 0)
 			panic("region_alloc: page_insert failed!\n");
+		va+=PGSIZE;
 	}
 }
 
