@@ -42,7 +42,7 @@ bootmain(void)
 	int i;
 
 	// read 1st page off disk
-	readseg((uint32_t) ELFHDR, SECTSIZE*8, 0);
+	readseg((uint32_t) ELFHDR, SECTSIZE*8, 0);//这里只读kernal所在的第一个扇区
 
 	// is this a valid ELF?
 	if (ELFHDR->e_magic != ELF_MAGIC)
@@ -62,7 +62,7 @@ bootmain(void)
 
 	// call the entry point from the ELF header
 	// note: does not return!
-	((void (*)(void)) (ELFHDR->e_entry))();
+	((void (*)(void)) (ELFHDR->e_entry))();//开始执行kernal的代码
 
 bad:
 	outw(0x8A00, 0x8A00);
@@ -81,15 +81,15 @@ readseg(uint32_t pa, uint32_t count, uint32_t offset)
 	end_pa = pa + count;
 
 	// round down to sector boundary
-	pa &= ~(SECTSIZE - 1);
+	pa &= ~(SECTSIZE - 1);//低位清零
 
 	// translate from bytes to sectors, and kernel starts at sector 1
-	offset = (offset / SECTSIZE) + 1;
+	offset = (offset / SECTSIZE) + 1;//加1是0号扇区装bootloader
 
 	// If this is too slow, we could read lots of sectors at a time.
 	// We'd write more to memory than asked, but it doesn't matter --
 	// we load in increasing order.
-	while (pa < end_pa) {
+	while (pa < end_pa) { //循环读扇区
 		// Since we haven't enabled paging yet and we're using
 		// an identity segment mapping (see boot.S), we can
 		// use physical addresses directly.  This won't be the
@@ -109,7 +109,7 @@ waitdisk(void)
 }
 
 void
-readsect(void *dst, uint32_t offset)
+readsect(void *dst, uint32_t offset)//从offset处读一个扇区到dst位置
 {
 	// wait for disk to be ready
 	waitdisk();

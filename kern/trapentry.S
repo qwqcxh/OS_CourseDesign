@@ -47,10 +47,32 @@
 /*
  * Lab 3: Your code here for generating entry points for the different traps.
  */
+ 	TRAPHANDLER_NOEC(trap0, 0);
+    TRAPHANDLER_NOEC(trap1, 1);
+    TRAPHANDLER_NOEC(trap3, 3);
+    TRAPHANDLER_NOEC(trap4, 4);
+    TRAPHANDLER_NOEC(trap5, 5);
+    TRAPHANDLER_NOEC(trap6, 6);
+    TRAPHANDLER_NOEC(trap7, 7);
+    TRAPHANDLER(trap8, 8);
+    TRAPHANDLER(trap10, 10)
+    TRAPHANDLER(trap11, 11)
+    TRAPHANDLER(trap12, 12)
+    TRAPHANDLER(trap13, 13)
+    TRAPHANDLER(trap14, 14)
+    TRAPHANDLER_NOEC(trap16, 16)
 
-
+    TRAPHANDLER_NOEC(t_syscall, T_SYSCALL)
 
 /*
  * Lab 3: Your code here for _alltraps
  */
-
+_alltraps:
+	pushl %ds;
+	pushl %es;
+	pushal
+	movl $GD_KD,%eax;
+	movw %ax,%ds;
+	movw %ax,%es;
+	pushl %esp;//作为trap()的参数
+	call trap;
