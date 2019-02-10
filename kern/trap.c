@@ -253,7 +253,9 @@ page_fault_handler(struct Trapframe *tf)
 
 	// LAB 3: Your code here.
 	if((tf->tf_cs & 3) == 0){
-		panic("page_fault_handler: kernel page fault!\n");
+		cprintf("[%08x] user fault va %08x ip %08x\n",
+		curenv->env_id, fault_va, tf->tf_eip);
+		panic("page_fault_handler: kernel page fault at %x!\n",fault_va);
 	}
 	// We've already handled kernel-mode exceptions, so if we get here,
 	// the page fault happened in user mode.
