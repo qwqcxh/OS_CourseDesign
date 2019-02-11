@@ -214,7 +214,7 @@ mem_init(void)
 	// we just set up the mapping anyway.
 	// Permissions: kernel RW, user NONE
 	// Your code goes here:
-
+	boot_map_region(kern_pgdir,KERNBASE,0xffffffff,0,PTE_W);
 	// Initialize the SMP-related parts of the memory map
 	mem_init_mp();
 
@@ -265,7 +265,10 @@ mem_init_mp(void)
 	//     Permissions: kernel RW, user NONE
 	//
 	// LAB 4: Your code here:
-
+	for(int i=0;i<NCPU;i++){
+		boot_map_region(kern_pgdir,KSTACKTOP-KSTKSIZE-i*(KSTKSIZE+KSTKGAP),
+		KSTKSIZE,PADDR(percpu_kstacks[i]),PTE_W);
+	}
 }
 
 // --------------------------------------------------------------
@@ -313,7 +316,11 @@ page_init(void)
 	*    END_OF_IO_Hole-> +------------------------------+      
 	*                     |     I/O Hole(in use)         |                  
 	*    start_IO_Hole--> +------------------------------+ IOPHYSMEM               
-	*                     |     ...     ...    ...       |    
+	*                     |     ...     ...    ...       | 
+	*                     +------------------------------+
+	*                     |     multi-processor entry    |
+	*                     +------------------------------+ MPENTRY_PADDR
+	*                     |     ...     ...    ...       |
 	*    END_OF_PAGE_0--> +------------------------------+ 
 	*                     |     page 0 (in use)          | 
 	*    0 -------------> +------------------------------+ 
@@ -322,7 +329,8 @@ page_init(void)
 	size_t end_boot_alloc = PADDR(boot_alloc(0)) / PGSIZE;//nextfree是按页对齐，无需ROUNDUP
 	size_t i;
 	for (i = 0; i < npages; i++) {
-		if(i==0||(i>=start_IO_hole && i<=end_boot_alloc)){
+		if(i==0||(i==MPENTRY_PADDR/PGSIZE)||
+		(i>=start_IO_hole && i<=end_boot_alloc)){
 			pages[i].pp_ref = 1;
 			pages[i].pp_link = NULL;
 		}
@@ -590,7 +598,15 @@ mmio_map_region(physaddr_t pa, size_t size)
 	// Hint: The staff solution uses boot_map_region.
 	//
 	// Your code here:
-	panic("mmio_map_region not implemented");
+	// panic("mmio_map_region not implemented");
+	size = ROUNDUP(pa+size,PGSIZE);
+	pa =  ROUNDDOWN(pa,PGSIZE);
+	size -= pa;
+	if(base+size >= MMIOLIM) 
+		panic("mmio_map_region: the map would overflow MMIOLIM\n");
+	boot_map_region(kern_pgdir,base,size,pa,PTE_PCD|PTE_PWT|PTE_W);
+	base += size;
+	return (void*)(base-size);
 }
 
 static uintptr_t user_mem_check_addr;
@@ -821,9 +837,10 @@ check_kern_pgdir(void)
 		assert(check_va2pa(pgdir, UENVS + i) == PADDR(envs) + i);
 
 	// check phys mem
-	for (i = 0; i < npages * PGSIZE; i += PGSIZE)
+	for (i = 0; i < npages * PGSIZE; i += PGSIZE){
+		cprintf("%x %d\n",KERNBASE+i,check_va2pa(pgdir,KERNBASE+i));
 		assert(check_va2pa(pgdir, KERNBASE + i) == i);
-
+	}
 	// check kernel stack
 	// (updated in lab 4 to check per-CPU kernel stacks)
 	for (n = 0; n < NCPU; n++) {
