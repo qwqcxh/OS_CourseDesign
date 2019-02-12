@@ -29,7 +29,16 @@ sched_yield(void)
 	// below to halt the cpu.
 
 	// LAB 4: Your code here.
-
+	int head=0;
+	if(curenv) head=(ENVX(curenv->env_id)+1)%NENV;
+	int i;
+	for(i=0;i<NENV;i++){
+		if(envs[head].env_status == ENV_RUNNABLE)
+			env_run(&envs[head]);
+		head = (head+1)%NENV;
+	}
+	if(curenv && curenv->env_status == ENV_RUNNING)
+		env_run(curenv);
 	// sched_halt never returns
 	sched_halt();
 }
@@ -55,7 +64,6 @@ sched_halt(void)
 		while (1)
 			monitor(NULL);
 	}
-
 	// Mark that no environment is running on this CPU
 	curenv = NULL;
 	lcr3(PADDR(kern_pgdir));
