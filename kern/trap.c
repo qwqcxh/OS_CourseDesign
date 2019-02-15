@@ -87,6 +87,22 @@ trap_init(void)
 	extern void trap14();
 	extern void trap16();
 	extern void t_syscall();
+	extern void irq0();
+	extern void irq1();
+	extern void irq2();
+	extern void irq3();
+	extern void irq4();
+	extern void irq5();
+	extern void irq6();
+	extern void irq7();
+	extern void irq8();
+	extern void irq9();
+	extern void irq10();
+	extern void irq11();
+	extern void irq12();
+	extern void irq13();
+	extern void irq14();
+	extern void irq15();
 	SETGATE(idt[0],0,GD_KT,trap0,0);
 	SETGATE(idt[1],0,GD_KT,trap1,0);
 	SETGATE(idt[3],0,GD_KT,trap3,3);
@@ -102,6 +118,22 @@ trap_init(void)
 	SETGATE(idt[14],0,GD_KT,trap14,0);
 	SETGATE(idt[16],0,GD_KT,trap16,0);
 	SETGATE(idt[T_SYSCALL],0,GD_KT,t_syscall,3);
+	SETGATE(idt[IRQ_OFFSET+0],0,GD_KT,irq0,3);
+	SETGATE(idt[IRQ_OFFSET+1],0,GD_KT,irq1,3);
+	SETGATE(idt[IRQ_OFFSET+2],0,GD_KT,irq2,3);
+	SETGATE(idt[IRQ_OFFSET+3],0,GD_KT,irq3,3);
+	SETGATE(idt[IRQ_OFFSET+4],0,GD_KT,irq4,3);
+	SETGATE(idt[IRQ_OFFSET+5],0,GD_KT,irq5,3);
+	SETGATE(idt[IRQ_OFFSET+6],0,GD_KT,irq6,3);
+	SETGATE(idt[IRQ_OFFSET+7],0,GD_KT,irq7,3);
+	SETGATE(idt[IRQ_OFFSET+8],0,GD_KT,irq8,3);
+	SETGATE(idt[IRQ_OFFSET+9],0,GD_KT,irq9,3);
+	SETGATE(idt[IRQ_OFFSET+10],0,GD_KT,irq10,3);
+	SETGATE(idt[IRQ_OFFSET+11],0,GD_KT,irq11,3);
+	SETGATE(idt[IRQ_OFFSET+12],0,GD_KT,irq12,3);
+	SETGATE(idt[IRQ_OFFSET+13],0,GD_KT,irq13,3);
+	SETGATE(idt[IRQ_OFFSET+14],0,GD_KT,irq14,3);
+	SETGATE(idt[IRQ_OFFSET+15],0,GD_KT,irq15,3);
 	// Per-CPU setup 
 	trap_init_percpu();
 }
@@ -205,7 +237,29 @@ trap_dispatch(struct Trapframe *tf)
 {
 	// Handle processor exceptions.
 	// LAB 3: Your code here.
-
+	switch (tf->tf_trapno)
+	{
+		case T_PGFLT:
+			page_fault_handler(tf);
+			return;
+		case T_BRKPT:
+			monitor(tf);
+			return;
+		case T_SYSCALL:
+			tf->tf_regs.reg_eax = syscall(tf->tf_regs.reg_eax,
+				tf->tf_regs.reg_edx,
+				tf->tf_regs.reg_ecx,
+				tf->tf_regs.reg_ebx,
+				tf->tf_regs.reg_edi,
+				tf->tf_regs.reg_esi);
+			return ;
+		case IRQ_OFFSET+IRQ_TIMER:
+			lapic_eoi();
+			sched_yield();
+			return ;
+		default:
+			break;
+	}
 	// Handle spurious interrupts
 	// The hardware sometimes raises these because of noise on the
 	// IRQ line or other reasons. We don't care.
@@ -339,7 +393,28 @@ page_fault_handler(struct Trapframe *tf)
 	//   (the 'tf' variable points at 'curenv->env_tf').
 
 	// LAB 4: Your code here.
+	if(curenv->env_pgfault_upcall){
+		char *top = (char*)(UXSTACKTOP-1+4);
+		if(tf->tf_esp >= UXSTACKTOP-PGSIZE && tf->tf_esp<= UXSTACKTOP-1)
+			top=(char*)tf->tf_esp;
+		size_t size = sizeof(struct UTrapframe) + 4;
+		if(top == (char*)(UXSTACKTOP+3))
+			user_mem_assert(curenv,top-size,sizeof(struct UTrapframe),PTE_U|PTE_W);
+		else
+			user_mem_assert(curenv,top-size,size,PTE_U|PTE_W);
+		struct UTrapframe* utf_ptr = (struct UTrapframe*)(top-size);
+		utf_ptr->utf_eflags = tf->tf_eflags;
+		utf_ptr->utf_eip = tf->tf_eip;
+		utf_ptr->utf_err = tf->tf_err;
+		utf_ptr->utf_esp = tf->tf_esp;
+		utf_ptr->utf_fault_va = fault_va;
+		utf_ptr->utf_regs = tf->tf_regs;
 
+		tf->tf_esp = (uintptr_t)utf_ptr;
+		tf->tf_eip = (uintptr_t)curenv->env_pgfault_upcall;
+		env_run(curenv);
+		return;
+	}
 	// Destroy the environment that caused the fault.
 	cprintf("[%08x] user fault va %08x ip %08x\n",
 		curenv->env_id, fault_va, tf->tf_eip);
